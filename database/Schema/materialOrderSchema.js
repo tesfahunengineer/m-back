@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { required } = require("../../zod/zod-vendor");
 
 const materialOrderSchema = new mongoose.Schema(
   {
@@ -16,9 +17,11 @@ const materialOrderSchema = new mongoose.Schema(
       default: "pending",
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
 const MaterialOrder = mongoose.model("MaterialOrder", materialOrderSchema);
 
-module.exports = MaterialOrder;
+module.exports = MaterialOrder; . Is it ?
