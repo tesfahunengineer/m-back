@@ -15,6 +15,7 @@ router.post("/", async (req, res) => {
       totalPrice,
       orderDate,
       items,
+      status,
     } = req.body;
 
     // Check for missing required fields
@@ -48,7 +49,7 @@ router.post("/", async (req, res) => {
 
     // Check total price calculation
     const calculatedTotal = parsedQuantity * parsedUnitPrice;
-    const roundedCalculatedTotal = parseFloat(calculatedTotal.toFixed(2)); // optional precision fix
+    const roundedCalculatedTotal = parseFloat(calculatedTotal.toFixed(2));
 
     if (roundedCalculatedTotal !== parsedTotalPrice) {
       return res.status(400).json({
@@ -67,6 +68,7 @@ router.post("/", async (req, res) => {
       totalPrice: parsedTotalPrice,
       orderDate,
       items,
+      status: status || "Pending", // default status
     });
 
     await newMaterialOrder.save();
@@ -106,74 +108,33 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ✅ Update a material order
+// ✅ Update a material order (partial update allowed)
 router.put("/:id", async (req, res) => {
   try {
-    const {
-      materialId,
-      itemDescription,
-      supplier,
-      quantity,
-      unitOfMeasurement,
-      unitPrice,
-      totalPrice,
-      orderDate,
-      items,
-    } = req.body;
+    const updates = req.body; // allow partial updates
 
-    // Validate required fields
-    if (
-      !materialId ||
-      !itemDescription ||
-      !supplier ||
-      !quantity ||
-      !unitOfMeasurement ||
-      !unitPrice ||
-      !totalPrice ||
-      !orderDate
-    ) {
-      return res.status(400).json({ message: "All fields are required." });
+    // If updating numeric fields, validate them
+    if (updates.quantity) updates.quantity = parseFloat(updates.quantity);
+    if (updates.unitPrice) updates.unitPrice = parseFloat(updates.unitPrice);
+    if (updates.totalPrice) updates.totalPrice = parseFloat(updates.totalPrice);
+
+    // Validate total price only if quantity & unitPrice provided
+    if (updates.quantity && updates.unitPrice) {
+      const calculatedTotal = updates.quantity * updates.unitPrice;
+      const roundedCalculatedTotal = parseFloat(calculatedTotal.toFixed(2));
+      if (
+        updates.totalPrice &&
+        roundedCalculatedTotal !== updates.totalPrice
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Error in Total Price: Your total price is incorrect." });
+      }
     }
 
-    // Parse numeric values
-    const parsedQuantity = parseFloat(quantity);
-    const parsedUnitPrice = parseFloat(unitPrice);
-    const parsedTotalPrice = parseFloat(totalPrice);
-
-    if (
-      isNaN(parsedQuantity) ||
-      isNaN(parsedUnitPrice) ||
-      isNaN(parsedTotalPrice)
-    ) {
-      return res.status(400).json({
-        message: "Quantity, Unit Price, and Total Price must be valid numbers.",
-      });
-    }
-
-    // Validate total price
-    const calculatedTotal = parsedQuantity * parsedUnitPrice;
-    const roundedCalculatedTotal = parseFloat(calculatedTotal.toFixed(2));
-
-    if (roundedCalculatedTotal !== parsedTotalPrice) {
-      return res.status(400).json({
-        message: "Error in Total Price: Your total price is incorrect.",
-      });
-    }
-
-    // Proceed to update
     const updatedOrder = await MaterialOrder.findByIdAndUpdate(
       req.params.id,
-      {
-        materialId,
-        itemDescription,
-        supplier,
-        quantity: parsedQuantity,
-        unitOfMeasurement,
-        unitPrice: parsedUnitPrice,
-        totalPrice: parsedTotalPrice,
-        orderDate,
-        items,
-      },
+      updates,
       { new: true }
     );
 
