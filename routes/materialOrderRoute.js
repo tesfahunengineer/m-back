@@ -14,7 +14,6 @@ router.post("/", async (req, res) => {
       unitPrice,
       totalPrice,
       orderDate,
-      items,
       status,
     } = req.body;
 
@@ -47,11 +46,11 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // Check total price calculation
+    // Check total price calculation with safe tolerance
     const calculatedTotal = parsedQuantity * parsedUnitPrice;
     const roundedCalculatedTotal = parseFloat(calculatedTotal.toFixed(2));
 
-    if (roundedCalculatedTotal !== parsedTotalPrice) {
+    if (Math.abs(roundedCalculatedTotal - parsedTotalPrice) > 0.01) {
       return res.status(400).json({
         message: "Error in Total Price: Your total price is incorrect",
       });
@@ -66,9 +65,8 @@ router.post("/", async (req, res) => {
       unitOfMeasurement,
       unitPrice: parsedUnitPrice,
       totalPrice: parsedTotalPrice,
-      orderDate,
-      items,
-      status: status || "Pending", // default status
+      orderDate: new Date(orderDate), // ✅ ensure Date type
+      status: status || "pending", // ✅ match enum in schema
     });
 
     await newMaterialOrder.save();
@@ -78,8 +76,8 @@ router.post("/", async (req, res) => {
       order: newMaterialOrder,
     });
   } catch (error) {
-    console.error("Error creating material order:", error);
-    res.status(500).json({ message: "Server error. Please try again later." });
+    console.error("❌ Error creating material order:", error);
+    res.status(500).json({ message: error.message });
   }
 });
 
@@ -89,7 +87,7 @@ router.get("/allList", async (req, res) => {
     const materialOrders = await MaterialOrder.find();
     res.status(200).json(materialOrders);
   } catch (error) {
-    console.error("Error fetching material orders:", error);
+    console.error("❌ Error fetching material orders:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -103,7 +101,7 @@ router.get("/:id", async (req, res) => {
     }
     res.status(200).json(order);
   } catch (error) {
-    console.error("Error fetching material order:", error);
+    console.error("❌ Error fetching material order:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -124,7 +122,7 @@ router.put("/:id", async (req, res) => {
       const roundedCalculatedTotal = parseFloat(calculatedTotal.toFixed(2));
       if (
         updates.totalPrice &&
-        roundedCalculatedTotal !== updates.totalPrice
+        Math.abs(roundedCalculatedTotal - updates.totalPrice) > 0.01
       ) {
         return res
           .status(400)
@@ -147,8 +145,8 @@ router.put("/:id", async (req, res) => {
       order: updatedOrder,
     });
   } catch (error) {
-    console.error("Error updating material order:", error);
-    res.status(500).json({ message: "Server error. Please try again later." });
+    console.error("❌ Error updating material order:", error);
+    res.status(500).json({ message: error.message });
   }
 });
 
@@ -163,8 +161,8 @@ router.delete("/:id", async (req, res) => {
 
     res.status(200).json({ message: "Material order deleted successfully" });
   } catch (error) {
-    console.error("Error deleting material order:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("❌ Error deleting material order:", error);
+    res.status(500).json({ message: error.message });
   }
 });
 
